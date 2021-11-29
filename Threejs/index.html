@@ -1,0 +1,163 @@
+<html>
+ 
+<head>
+    <title>threeJS</title>
+    <style>
+        body {
+            background-color: #000000;
+            margin: 0px;
+            overflow: hidden;
+        }
+ 
+        #WebGL {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 999;
+        }
+    </style>
+</head>
+ 
+<body>
+    <script src="./js/jquery.js"></script>
+    <script src="./js/three.js"></script>
+    <script src="./js/OrbitControls.js"></script>
+    <div id="WebGL"></div>
+    <script>
+        'use strict';
+        var container, camera, scene, renderer, geometry, material, controls; //常用变量
+        var spotLight, mesh; //自定义对象变量
+        var target = new THREE.Vector3(0, 30, 0);
+        var webGLW = $('#WebGL').width();
+        var webGLH = $('#WebGL').height();
+        init();
+        animate();
+ 
+        function init() {
+            container = document.getElementById('WebGL');
+            rendererScene(); //场景渲染
+            sceneBackground();
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(0, 50, -200);
+            camera.lookAt(target);
+            plane()  //地面
+            lights(); //灯光：聚光灯
+            loadModel(); //添加模型
+            OrbitControls(camera, renderer); //OrbitControls控件模块，90版本鼠标右键上下是移动，96版本之后右键上下是缩放
+            window.addEventListener('resize', onWindowResize, false); //监听屏幕变化
+        }
+ 
+        function sceneBackground() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111);//可以用图片代替作为背景
+            var path = './sky/';
+            var format = '.jpg';
+            new THREE.CubeTextureLoader().load([
+                path + 'px' + format, path + 'nx' + format, //右左
+                path + 'py' + format, path + 'ny' + format, //上下
+                path + 'pz' + format, path + 'nz' + format //前后
+            ], function (res) {
+                scene.background = res;
+            });
+            // // scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000); //雾
+        }
+ 
+        function plane() {           // 地面
+            let grid_mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(200, 200), new THREE.MeshPhongMaterial({
+                color: 0x999999,
+                // depthWrite: false
+            }));
+            grid_mesh.rotation.x = -Math.PI / 2;
+            grid_mesh.receiveShadow = true;
+            scene.add(grid_mesh);
+            var grid = new THREE.GridHelper(200, 20, 0x000000, 0x000000);
+            grid.material.opacity = 0.2;
+            grid.material.transparent = true;
+            scene.add(grid);
+        }
+ 
+        function lights() { //光影
+ 
+            var ambient = new THREE.AmbientLight(0xffffff);
+            scene.add(ambient);
+            //聚光灯
+            //  SpotLight( color：颜色, intensity：强度, distance：发光距离, angle：角度, penumbra：边缘范围, decay：衰减 )
+            spotLight = new THREE.SpotLight(0xffffff, 1);
+            spotLight.position.set(0, 120, 0);
+            spotLight.angle = Math.PI / 6;
+            spotLight.penumbra = 0.05; //边缘范围，反比
+            spotLight.decay = 2; //衰减系数，反比
+            spotLight.distance = 400; //发光距离
+            spotLight.castShadow = true; //阴影
+            spotLight.shadow.mapSize.width = 1024;
+            spotLight.shadow.mapSize.height = 1024;
+            spotLight.shadow.camera.near = 10; //近截面
+            spotLight.shadow.camera.far = 250;
+            scene.add(spotLight);
+        }
+ 
+        function lightsHelper(lightsObject) {
+            // 聚光灯显示助手SpotLightHelper( light:灯光, color：颜色 )
+            var lightHelper = new THREE.SpotLightHelper(lightsObject, 0xdfdfdf);
+            scene.add(lightHelper);
+            var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(100, 100), new THREE.MeshPhongMaterial({
+                color: 0x9cfcf99,
+                depthWrite: false
+            }));
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(0, -20, 0)
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+        }
+ 
+        function loadModel() { //模型
+            mesh = new THREE.Mesh(
+                new THREE.SphereBufferGeometry(20, 20, 20),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    wireframe: true
+                })
+            );
+            mesh.position.set(0, 30, 0)
+            scene.add(mesh);
+        }
+ 
+        function onWindowResize() {         //调整窗口大小，防止模型被拉伸
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+ 
+        }
+ 
+        function rendererScene() {            //渲染
+            renderer = new THREE.WebGLRenderer({
+                antialias: true
+            });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.gammaInput = true;
+            renderer.gammaOutput = true;
+            container.appendChild(renderer.domElement);
+        }
+ 
+        function OrbitControls(camera, renderer) {       //自动旋转
+            //OrbitControls控件操作模块
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target = target; //控制的target
+            controls.autoRotate = true; //是否自动旋转
+            controls.autoRotateSpeed = 2.0; //自动旋转速度，正比
+        }
+ 
+        function animate() {        //周期性渲染
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        };
+    </script>
+</body>
+ 
+</html>
